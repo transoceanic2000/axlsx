@@ -323,6 +323,13 @@ class TestWorksheet < Test::Unit::TestCase
     assert_equal(doc.xpath('//xmlns:worksheet/xmlns:mergeCells/xmlns:mergeCell[@ref="E1:F1"]').size, 1)
   end
 
+  def test_to_xml_string_merge_cells_row
+    row = @ws.add_row [1, "two"]
+    @ws.merge_cells row
+    doc = Nokogiri::XML(@ws.to_xml_string)
+    assert_equal(doc.xpath('//xmlns:worksheet/xmlns:mergeCells/xmlns:mergeCell[@ref="A1:B1"]').size, 1)
+  end
+
   def test_to_xml_string_row_breaks
   @ws.add_page_break("A1")
     doc = Nokogiri::XML(@ws.to_xml_string)
@@ -476,7 +483,7 @@ class TestWorksheet < Test::Unit::TestCase
     @ws.column_widths nil, 0.5
     assert_equal(@ws.column_info[1].width, 0.5, 'eat my width')
     assert_raise(ArgumentError, 'only accept unsigned ints') { @ws.column_widths 2, 7, -1 }
-    assert_raise(ArgumentError, 'only accept Integer, Float or Fixnum') { @ws.column_widths 2, 7, "-1" }
+    assert_raise(ArgumentError, 'only accept Integer or Float') { @ws.column_widths 2, 7, "-1" }
   end
 
   def test_protect_range
@@ -573,5 +580,15 @@ class TestWorksheet < Test::Unit::TestCase
     assert_raise(ArgumentError) { @wb.add_worksheet(:name => 'Sheet1') }
     assert_equal(1, @wb.worksheets.size)
   end
+  
+  def test_worksheet_only_includes_outline_pr_when_set
+    doc = Nokogiri::XML(@ws.to_xml_string)
+    assert_equal(doc.xpath('//xmlns:worksheet/xmlns:sheetPr/xmlns:outlinePr').size, 0)
 
+    @ws.sheet_pr.outline_pr.summary_below = false
+    @ws.sheet_pr.outline_pr.summary_right = true
+    doc = Nokogiri::XML(@ws.to_xml_string)
+    assert_equal(doc.xpath('//xmlns:worksheet/xmlns:sheetPr/xmlns:outlinePr').size, 1)
+    assert_equal(doc.xpath('//xmlns:worksheet/xmlns:sheetPr/xmlns:outlinePr[@summaryBelow=0][@summaryRight=1]').size, 1)
+  end
 end
